@@ -1,0 +1,8 @@
+.env
+/sam3/
+__pycache__/
+*.pyc
+*.pyo
+.sam3_setup_done
+private_key.pem
+public_key.pem
