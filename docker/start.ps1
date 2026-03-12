@@ -1,0 +1,1 @@
+docker start -ai sam3-container
