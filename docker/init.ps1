@@ -82,8 +82,6 @@ foreach ($pair in @(
     @{ Name = 'POSTGRES_PASSWORD'; Value = $env:POSTGRES_PASSWORD },
     @{ Name = 'POSTGRES_DB'; Value = $env:POSTGRES_DB },
     @{ Name = 'DATABASE_URL'; Value = $env:DATABASE_URL },
-    @{ Name = 'AUTH0_DOMAIN'; Value = $env:AUTH0_DOMAIN },
-    @{ Name = 'AUTH0_API_AUDIENCE'; Value = $env:AUTH0_API_AUDIENCE }
 )) {
     if ($pair.Value) {
         $envArgs += '-e', ("{0}={1}" -f $pair.Name, $pair.Value)
