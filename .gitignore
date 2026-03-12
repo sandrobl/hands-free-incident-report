@@ -6,3 +6,9 @@ __pycache__/
 .sam3_setup_done
 private_key.pem
 public_key.pem
+/whisper/
+/uploads/
+/gemma/
+/example_data/
+*.rdb
+*.gpg
