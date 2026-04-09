@@ -12,3 +12,8 @@ public_key.pem
 /example_data/
 *.rdb
 *.gpg
+/docker/docker-compose.yml
+/sentence_transformer/
+/dataset/raw/
+/gemma-4/
+/metricAnything/
