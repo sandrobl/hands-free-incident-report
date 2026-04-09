@@ -25,7 +25,7 @@ openssl enc -aes-256-cbc -e -nosalt \
   -iv "$iv_hex" \
   -in "$input_file" \
   -out "$tmp_dir/cipher.bin"
-
+a
 cat "$tmp_dir/iv.bin" "$tmp_dir/cipher.bin" > "$output_file"
 
 openssl pkeyutl -encrypt \

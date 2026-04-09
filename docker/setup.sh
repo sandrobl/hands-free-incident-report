@@ -77,14 +77,29 @@ if [ ! -f "$SETUP_MARKER" ]; then
     # # ========================================
     # # Gemma
     # # ========================================
-    pip install -U transformers --break-system-packages
+    pip install git+https://github.com/huggingface/transformers.git --break-system-packages
     pip install accelerate --break-system-packages
+
+    # # ========================================
+    # # Sentence Transformers
+    # # ========================================
+    pip install sentence-transformers --break-system-packages
+
+    # # =======================================
+    # # Metric Anything
+    # # =======================================
+    pip install git+https://github.com/microsoft/MoGe.git --break-system-packages
+
+    # # =======================================
+    # # Pyproj for geospatial calculations
+    # # =======================================
+    pip install pyproj --break-system-packages
 
     # ========================================
     # 5. Python app dependencies
     # ========================================
     pip install "fastapi[standard]" celery[redis] flower redis cryptography python-dotenv \
-        "psycopg[binary,pool]" pgvector sqlalchemy[asyncio] alembic geoalchemy2 --break-system-packages
+        "psycopg[binary,pool]" pgvector sqlalchemy[asyncio] alembic geoalchemy2 geoalchemy2[shapely] --break-system-packages
 
     # ========================================
     # 6. Storage + PostgreSQL DB init

@@ -74,6 +74,16 @@ Write-Host 'Container is starting!' -ForegroundColor Green
 Write-Host '========================================' -ForegroundColor Green
 Write-Host ''
 
+Write-Host 'Starting Caddy reverse proxy...' -ForegroundColor Yellow
+docker-compose -f (Join-Path $PSScriptRoot 'docker-compose.yml') up -d
+if ($LASTEXITCODE -ne 0) {
+    Write-Host 'ERROR: Failed to start Caddy!' -ForegroundColor Red
+    Read-Host 'Press Enter to exit'
+    exit 1
+}
+Write-Host 'Caddy started ✓' -ForegroundColor Green
+Write-Host ''
+
 # Forward only the simple single-line vars the setup script needs
 $envArgs = @()
 foreach ($pair in @(
@@ -81,7 +91,7 @@ foreach ($pair in @(
     @{ Name = 'POSTGRES_USER'; Value = $env:POSTGRES_USER },
     @{ Name = 'POSTGRES_PASSWORD'; Value = $env:POSTGRES_PASSWORD },
     @{ Name = 'POSTGRES_DB'; Value = $env:POSTGRES_DB },
-    @{ Name = 'DATABASE_URL'; Value = $env:DATABASE_URL },
+    @{ Name = 'DATABASE_URL'; Value = $env:DATABASE_URL }
 )) {
     if ($pair.Value) {
         $envArgs += '-e', ("{0}={1}" -f $pair.Name, $pair.Value)
