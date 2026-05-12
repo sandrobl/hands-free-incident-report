@@ -111,7 +111,7 @@ $uploadsDir = Join-Path $projectRoot 'uploads'
 if (-not (Test-Path $uploadsDir)) { New-Item -ItemType Directory -Path $uploadsDir | Out-Null }
 
 # Run container
-docker run --gpus all -it -p 8000:8000 -p 5555:5555 -p 5432:5432 -v "${projectRoot}:/workspace" -v "${uploadsDir}:/data/uploads" -v "${setupPath}:/setup.sh" @envArgs --name sam3-container nvidia/cuda:12.6.0-cudnn-runtime-ubuntu24.04 bash /setup.sh
+docker run --gpus all -it --shm-size=8g -p 8000:8000 -p 5555:5555 -p 5432:5432 -v "${projectRoot}:/workspace" -v "${uploadsDir}:/data/uploads" -v "${setupPath}:/setup.sh" @envArgs --name sam3-container nvidia/cuda:12.6.0-cudnn-runtime-ubuntu24.04 bash /setup.sh
 
 Write-Host ''
 Write-Host 'Container exited. Goodbye!' -ForegroundColor Cyan

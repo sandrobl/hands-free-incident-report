@@ -4,6 +4,7 @@ import os
 import subprocess
 import uuid
 import torch
+import time
 
 
 import numpy as np
@@ -24,7 +25,7 @@ from db import get_sync_db, Report
 )
 def process_upload(self, report_id: str, batch_id: str):
     logging.info(f"Ingest Processing upload {report_id} in batch {batch_id}")
-
+    start_time = time.time()
     # 1. Fetch encrypted data from DB
     db = get_sync_db()
     try:
@@ -102,6 +103,7 @@ def process_upload(self, report_id: str, batch_id: str):
         try:
             report = db.get(Report, report_id)
             report.description_full = result['text']
+            report.ingest_duration = time.time() - start_time
             db.commit()
         finally:
             db.close()

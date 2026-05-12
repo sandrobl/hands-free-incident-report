@@ -1,5 +1,6 @@
 import logging
 import gc
+import time
 
 from celery_app import celery_app
 from helper import crypto
@@ -23,7 +24,7 @@ import torch
 )
 def process_upload(self, report_id: str, batch_id: str):
     logging.info(f"Voice Text Processing {report_id} in batch {batch_id}")
-
+    start_time = time.time()
     # 1. Fetch encrypted data from DB
     db = get_sync_db()
     try:
@@ -41,11 +42,11 @@ def process_upload(self, report_id: str, batch_id: str):
     try:
         # Gemma 4
         model = AutoModelForMultimodalLM.from_pretrained(
-            model_id, 
-            device_map="auto", 
+            model_id,
+            device_map="cpu",
             torch_dtype=torch.bfloat16,
             cache_dir=cache_dir,
-            local_files_only=True
+            local_files_only=True,
         ).eval()
 
         # model = Gemma3ForConditionalGeneration.from_pretrained(
@@ -150,6 +151,7 @@ def process_upload(self, report_id: str, batch_id: str):
             report = db.get(Report, report_id)
             report.description_short = description_short
             report.description_synonyms = description_synonyms
+            report.voice_text_duration = time.time() - start_time
             db.commit()
         finally:
             db.close()

@@ -5,6 +5,8 @@ import os
 import pathlib
 import shutil
 import requests
+from dateutil import parser
+from datetime import timezone
 
 
 from dotenv import load_dotenv
@@ -18,6 +20,7 @@ from fastapi.responses import PlainTextResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_plugin.fast_api_client import Auth0FastAPI
 from fastapi.security import HTTPBearer
+from fastapi.responses import HTMLResponse
 
 from pydantic import BaseModel
 from cryptography.hazmat.primitives import serialization
@@ -97,25 +100,6 @@ class TokenRequest(BaseModel):
     client_secret: str
 
 
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
-
-@app.post("/new_report/")
-async def new_report(request: Request, db: AsyncSession = Depends(get_db)):
-    claims = await app.state.auth0.require_auth()(request)
-
-    report = Report(user_id=claims["sub"])
-    db.add(report)
-    await db.flush()
-    await db.refresh(report)
-    await db.commit()
-
-    return {
-        "report_id": report.report_id,
-        "expires_at": "2026-12-12-12:00:00Z"
-    }
-
 @app.post("/upload_video/")
 async def receive_encrypted_video(
     request: Request,
@@ -125,12 +109,13 @@ async def receive_encrypted_video(
     latitude: float | None = Form(None),
     longitude: float | None = Form(None),
     orientation: str | None = Form(None),
+    created_at: str | None = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
     claims = await app.state.auth0.require_auth()(request)
 
     print(f"Received upload for report_id: {report_id}, filename: {encrypted_video.filename}, content_type: {encrypted_video.content_type}")
-    print(f"Form data - encrypted_session_key: {encrypted_session_key}, latitude: {latitude}, longitude: {longitude}, orientation: {orientation}")
+    print(f"Form data - encrypted_session_key: {encrypted_session_key}, latitude: {latitude}, longitude: {longitude}, orientation: {orientation}, created_at: {created_at}")
     # Validate report_id is a UUID to prevent path traversal
     try:
         uuid.UUID(report_id)
@@ -160,6 +145,9 @@ async def receive_encrypted_video(
         report.location_upload = f"SRID=4326;POINT({longitude} {latitude})"
     if orientation is not None:
         report.orientation_device = orientation
+    if created_at is not None:
+        report.created_at = parser.parse(created_at).replace(tzinfo=timezone.utc)
+                
     await db.commit()
 
     batch_id = str(uuid.uuid4())
@@ -213,6 +201,8 @@ async def get_report(request: Request, report_id: str, db: AsyncSession = Depend
         "description_full": report.description_full,
         "description_short": report.description_short,
         "description_synonyms": report.description_synonyms,
+        "segmented_word": report.segmented_word,
+        "orientation": report.orientation_device,
         "duplicate_of": report.duplicate_of,
         "duplicate_confidence": report.duplicate_confidence,
         "duplicates": duplicates,
@@ -290,3 +280,40 @@ def get_token(body: TokenRequest):
         raise HTTPException(status_code=response.status_code, detail=response.json())
 
     return response.json()
+
+@app.get("/privacy", response_class=HTMLResponse)
+async def get_privacy_policy():
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="de">
+    <head>
+        <meta charset="UTF-8">
+        <title>Datenschutzerklärung - Master Thesis</title>
+        <style>
+            body { font-family: sans-serif; line-height: 1.6; padding: 20px; max-width: 800px; margin: auto; }
+            h1 { color: #333; }
+            h2 { color: #555; }
+        </style>
+    </head>
+    <body>
+        <h1>Datenschutzerklärung</h1>
+        <p>Diese App wird im Rahmen einer Masterarbeit an der Universität St. Gallen (HSG) entwickelt.</p>
+        
+        <h2>1. Verantwortlicher</h2>
+        <p>S.Blatter<br>Universität St. Gallen (HSG)<br></p>
+        
+        <h2>2. Zugriff auf Kamera und Mikrofon</h2>
+        <p>Die App nutzt die Kamera und das Mikrofon der verbundenen Smartglasses ausschließlich zur Erstellung von Unfallberichten. Die Aufnahme startet nur nach expliziter Nutzerinteraktion.</p>
+        
+        <h2>3. Datenspeicherung und Verarbeitungszweck</h2>
+        <p>Sämtliche Audio und Videodaten dienen rein wissenschaftlichen Zwecken im Rahmen der Master Thesis. Die Daten werden verschlüsselt an den Server des Projekts übertragen oder lokal gespeichert.</p>
+        
+        <h2>4. Weitergabe an Dritte</h2>
+        <p>Es erfolgt keine Weitergabe von personenbezogenen Daten an Dritte oder kommerzielle Organisationen. Meta (als Hardwarehersteller) erhält durch diese App keinen Zugriff auf die aufgenommenen Rohdaten der Berichte.</p>
+        
+        <h2>5. Nutzerrechte</h2>
+        <p>Nutzer haben das Recht auf Auskunft, Korrektur oder Löschung ihrer während der Testphase erhobenen Daten.</p>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content, status_code=200)

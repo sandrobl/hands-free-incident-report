@@ -18,9 +18,12 @@ class Report(Base):
     description_full: Mapped[str | None] = mapped_column(Text, default=None)
     description_short: Mapped[str | None] = mapped_column(Text, default=None)
     description_synonyms: Mapped[str | None] = mapped_column(Text, default=None)
+    
 
     location_upload = mapped_column(Geography(geometry_type="POINT", srid=4326), nullable=True)
     orientation_device: Mapped[float | None] = mapped_column(default=None, nullable=True)
+
+    segmented_word: Mapped[str | None] = mapped_column(Text, default=None)
 
     accuracy: Mapped[float | None] = mapped_column(default=None)
     status: Mapped[str] = mapped_column(Text, default="pending")
@@ -30,6 +33,11 @@ class Report(Base):
 
     frames: Mapped[list["ReportedFrame"]] = relationship(back_populates="report")
     user_id: Mapped[str | None] = mapped_column(Text, default=None)
+
+    ingest_duration: Mapped[float | None] = mapped_column(default=None, nullable=True)
+    voice_text_duration: Mapped[float | None] = mapped_column(default=None, nullable=True)
+    segment_duration: Mapped[float | None] = mapped_column(default=None, nullable=True)
+    report_duration: Mapped[float | None] = mapped_column(default=None, nullable=True)
 
 
 
@@ -46,5 +54,3 @@ class ReportedFrame(Base):
     distance_min_from_reported_location: Mapped[float | None] = mapped_column(default=None, nullable=True)
     location_segmented = mapped_column(Geography(geometry_type="POINT", srid=4326), nullable=True)
     report: Mapped["Report"] = relationship(back_populates="frames")
-
-

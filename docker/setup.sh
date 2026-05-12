@@ -36,11 +36,12 @@ if [ ! -f "$SETUP_MARKER" ]; then
     cd pgvector && make && make install
     cd / && rm -rf /tmp/pgvector
 
-    # # ========================================
-    # # 3. PyTorch + Hugging Face
-    # # ========================================
+    # ========================================
+    # 3. PyTorch + Hugging Face
+    # ========================================
     pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126 --break-system-packages
-    pip install --upgrade huggingface_hub --break-system-packages
+    pip install huggingface_hub --break-system-packages
+
 
     if [ -n "$HUGGING_FACE_HUB_TOKEN" ]; then
         python -c "from huggingface_hub import login; login(token='$HUGGING_FACE_HUB_TOKEN')"
@@ -50,9 +51,9 @@ if [ ! -f "$SETUP_MARKER" ]; then
 
     python -c 'import torch; print("CUDA:", torch.cuda.is_available(), "| GPU:", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "None")'
 
-    # # ========================================
-    # # 4. SAM3
-    # # ========================================
+    # ========================================
+    # 4. SAM3
+    # ========================================
     cd /workspace
     if [ ! -d 'sam3' ]; then
         git clone https://github.com/facebookresearch/sam3.git
@@ -61,48 +62,58 @@ if [ ! -f "$SETUP_MARKER" ]; then
     pip install . '.[notebooks]' '.[train,dev]' --break-system-packages
     python -c "import sam3; print('SAM3', sam3.__version__)"
 
+    # ========================================
+    # 5. SAM Audio
+    # ========================================
+    # pip install torchcodec --index-url https://download.pytorch.org/whl/cu126 --break-system-packages
+    # cd /workspace
+    # if [ ! -d 'sam-audio' ]; then
+    #     git clone https://github.com/facebookresearch/sam-audio.git
+    # fi
+    # cd sam-audio
+    # pip install . --break-system-packages
+    # python -c "from sam_audio import SAMAudio, SAMAudioProcessor; print('SAM Audio OK')"
 
-    # # ========================================
-    # # Whisper
-    # # ========================================
+    # ========================================
+    # 6. Whisper
+    # ========================================
     pip install -U openai-whisper --break-system-packages
     pip install setuptools-rust --break-system-packages
 
-
-    # # ========================================
-    # # Auth0 FastAPI
-    # # ========================================
+    # ========================================
+    # 7. Auth0 FastAPI
+    # ========================================
     pip install auth0-fastapi-api --break-system-packages
 
-    # # ========================================
-    # # Gemma
-    # # ========================================
+    # ========================================
+    # 8. Gemma / Transformers
+    # ========================================
     pip install git+https://github.com/huggingface/transformers.git --break-system-packages
     pip install accelerate --break-system-packages
 
-    # # ========================================
-    # # Sentence Transformers
-    # # ========================================
+    # ========================================
+    # 9. Sentence Transformers
+    # ========================================
     pip install sentence-transformers --break-system-packages
 
-    # # =======================================
-    # # Metric Anything
-    # # =======================================
+    # ========================================
+    # 10. Metric Anything
+    # ========================================
     pip install git+https://github.com/microsoft/MoGe.git --break-system-packages
 
-    # # =======================================
-    # # Pyproj for geospatial calculations
-    # # =======================================
+    # ========================================
+    # 11. Pyproj
+    # ========================================
     pip install pyproj --break-system-packages
 
     # ========================================
-    # 5. Python app dependencies
+    # 12. Python app dependencies
     # ========================================
     pip install "fastapi[standard]" celery[redis] flower redis cryptography python-dotenv \
         "psycopg[binary,pool]" pgvector sqlalchemy[asyncio] alembic geoalchemy2 geoalchemy2[shapely] --break-system-packages
 
     # ========================================
-    # 6. Storage + PostgreSQL DB init
+    # 13. Storage + PostgreSQL DB init
     # ========================================
     mkdir -p /data/uploads
 

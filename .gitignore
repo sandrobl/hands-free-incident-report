@@ -1,5 +1,6 @@
 .env
-/sam3/
+/sam3/*
+/sam3/.git/
 __pycache__/
 *.pyc
 *.pyo
@@ -17,3 +18,4 @@ public_key.pem
 /dataset/raw/
 /gemma-4/
 /metricAnything/
+/sam3/sam3/*
