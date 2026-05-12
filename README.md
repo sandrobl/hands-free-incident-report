@@ -75,6 +75,14 @@ The Docker setup script also references:
 - [helper/download_models.py](helper/download_models.py): downloads the Gemma model into `/workspace/gemma-4`.
 - [helper/merge-audio.ps1](helper/merge-audio.ps1): combines a visual file with audio using `ffmpeg`.
 
+## Service URLs and Ports (from repo files)
+
+- Redis broker/backend: `redis://localhost:6379/0` (see [celery_app.py](celery_app.py)).
+- Flower UI: `http://localhost:5555` (see [docker/start_server_services.sh](docker/start_server_services.sh) and [docker/setup.sh](docker/setup.sh)).
+- FastAPI dev server is started with `fastapi dev api-server.py --host 0.0.0.0` (port not explicitly set in the scripts).
+- Cloudflared tunnel target (when using the compose file): `http://192.168.0.101:8000` (see [docker/docker-compose.yml](docker/docker-compose.yml)).
+- Swagger UI: FastAPI serves it at `/docs` when the default docs are enabled.
+
 ## Dataset and Analytics
 
 The [dataset](dataset) folder includes:
