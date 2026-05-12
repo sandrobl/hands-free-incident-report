@@ -1,0 +1,617 @@
+import gc
+import logging
+from db.models import ReportedFrame
+import numpy as np
+import cv2
+import os
+import torch
+import torchaudio
+import uuid
+import subprocess
+
+from sam3.model_builder import build_sam3_video_predictor
+from sam_audio import SAMAudio, SAMAudioProcessor
+from celery_app import celery_app
+from helper import crypto
+from db import get_sync_db, Report
+from moge.model.v2 import MoGeModel
+from geoalchemy2.shape import to_shape
+from pyproj import Geod
+from huggingface_hub import snapshot_download
+
+
+def _extract_audio(video_path: str, out_wav_path: str) -> bool:
+    """
+    Extract audio from *video_path* to *out_wav_path* (16 kHz mono WAV).
+    Returns True on success, False when the video has no audio stream.
+    """
+    probe = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "a",
+         "-show_entries", "stream=codec_type", "-of", "csv=p=0", video_path],
+        capture_output=True, text=True,
+    )
+    if "audio" not in probe.stdout:
+        logging.info("Video has no audio stream — skipping audio extraction")
+        return False
+
+    subprocess.run(
+        [
+            "ffmpeg", "-y",
+            "-i", video_path,
+            "-vn",
+            "-ar", "16000",
+            "-ac", "1",
+            "-c:a", "pcm_s16le",
+            out_wav_path,
+        ],
+        check=True,
+        capture_output=True,
+    )
+    return True
+
+
+@celery_app.task(
+    name="app.tasks.segment.process_upload",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=10,
+    queue="analysis.segment",
+    track_started=True,
+)
+def process_upload(self, report_id: str, batch_id: str):
+    logging.info(f"Segment Processing {report_id} in batch {batch_id}")
+
+    db = get_sync_db()
+    try:
+        report = db.get(Report, report_id)
+        encrypted_session_key = report.encrypted_session_key
+        video_path = report.video_path
+        description_short = report.description_short
+        description_synonyms = report.description_synonyms
+        location_upload = report.location_upload
+        orientation_device = report.orientation_device
+    finally:
+        db.close()
+
+    aes_key = crypto.decrypt_session_key(encrypted_session_key)
+    with open(video_path, "rb") as f:
+        encrypted_blob = bytearray(f.read())
+
+    plaintext = bytearray(crypto.decrypt_video(aes_key, encrypted_blob))
+
+    mem_path = f"/dev/shm/{uuid.uuid4().hex}.mp4"
+    mem_path_rotated = f"/dev/shm/{uuid.uuid4().hex}.mp4"
+    mem_path_audio = f"/dev/shm/{uuid.uuid4().hex}.wav"
+    mem_path_audio_stripped = None  # declared here so finally block can always reference it
+
+    audio_target_path = None
+    audio_residual_path = None
+
+    try:
+        with open(mem_path, "wb") as f:
+            f.write(plaintext)
+
+        crypto.shred(plaintext)
+        plaintext = None
+
+        subprocess.run(
+            [
+                "ffmpeg", "-y",
+                "-i", mem_path,
+                "-metadata:s:v:0", "rotate=0",
+                "-c:v", "libx264",
+                "-preset", "fast",
+                mem_path_rotated,
+            ],
+            check=True,
+            capture_output=True,
+        )
+        os.unlink(mem_path)
+
+        has_audio = _extract_audio(mem_path_rotated, mem_path_audio)
+
+        raw_terms = (
+            [t.strip() for t in description_synonyms.split(",")]
+            if description_synonyms
+            else [description_short]
+        )
+        search_terms = [f"a {t}" if not t.startswith("a ") else t for t in raw_terms]
+        logging.info(f"Search terms: {search_terms}")
+
+        # ------------------------------------------------------------------ #
+        # SAM3 video segmentation                                             #
+        # ------------------------------------------------------------------ #
+        video_predictor = build_sam3_video_predictor()
+
+        response = video_predictor.handle_request(
+            request=dict(type="start_session", resource_path=mem_path_rotated)
+        )
+        session_id = response["session_id"]
+        sam3_total_frames = response.get("num_frames")
+
+        cap = cv2.VideoCapture(mem_path_rotated)
+        cv2_total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+        if cv2_total_frames == 0 or sam3_total_frames == 0:
+            raise RuntimeError(
+                f"Could not read video or video has no frames: {mem_path_rotated}"
+            )
+
+        total_frames = sam3_total_frames if sam3_total_frames else cv2_total_frames
+        key_frames = [
+            0,
+            total_frames // 4,
+            total_frames // 2,
+            3 * total_frames // 4,
+            total_frames - 1,
+        ]
+
+        any_objects_detected = False
+        matched_term = None
+
+        for term in search_terms:
+            logging.info(f"Trying search term '{term}' for {report_id}")
+            term_detected = False
+            for kf in key_frames:
+                response = video_predictor.handle_request(
+                    request=dict(
+                        type="add_prompt",
+                        session_id=session_id,
+                        frame_index=kf,
+                        text=term,
+                    )
+                )
+                n_objects = len(response["outputs"]["out_obj_ids"])
+                logging.info(f"  Term '{term}' frame {kf}: detected {n_objects} objects")
+                if n_objects > 0:
+                    term_detected = True
+                    any_objects_detected = True
+
+            if term_detected:
+                matched_term = term
+                logging.info(f"Objects found with term '{term}', stopping search")
+                break
+
+        if not any_objects_detected:
+            logging.warning(
+                f"No objects detected for any search term {search_terms} in {report_id}"
+            )
+
+        frames_output = {}
+        if any_objects_detected:
+            logging.info(f"Propagating masks through video using term '{matched_term}'...")
+            for frame_result in video_predictor.handle_stream_request(
+                request=dict(type="propagate_in_video", session_id=session_id)
+            ):
+                frame_idx = frame_result["frame_index"]
+                frames_output[frame_idx] = frame_result["outputs"]
+            logging.info(f"Processed {len(frames_output)} frames")
+
+        if "video_predictor" in locals():
+            try:
+                video_predictor.handle_request(dict(type="close_session", session_id=session_id))
+            except Exception:
+                pass
+            del video_predictor
+
+        torch.cuda.empty_cache()
+        gc.collect()
+
+        # ------------------------------------------------------------------ #
+        # SAM Audio — two-stage: strip narrator voice, then isolate target   #
+        # ------------------------------------------------------------------ #
+        if has_audio:
+            logging.info("Loading SAM Audio model...")
+            sam_audio_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+            sam_audio_model = (
+                SAMAudio.from_pretrained("facebook/sam-audio-large")
+                .to(sam_audio_device)
+                .eval()
+            )
+            sam_audio_processor = SAMAudioProcessor.from_pretrained(
+                "facebook/sam-audio-large"
+            )
+
+            # ---- Stage 1: remove the narrator's voice ------------------ #
+            VOICE_TERMS = [
+                "a person speaking",
+                "a human voice",
+                "someone talking",
+            ]
+
+            voice_stripped_audio = None
+
+            for voice_term in VOICE_TERMS:
+                logging.info(f"SAM Audio stage 1: trying voice term '{voice_term}'")
+                inputs = sam_audio_processor(
+                    audios=[mem_path_audio], descriptions=[voice_term]
+                ).to(sam_audio_device)
+
+                with torch.inference_mode():
+                    voice_result = sam_audio_model.separate(inputs, predict_spans=True)
+
+                voice_rms = voice_result.target[0].cpu().pow(2).mean().sqrt().item()
+                logging.info(
+                    f"  Stage 1 '{voice_term}': voice target RMS = {voice_rms:.6f}"
+                )
+
+                if voice_rms > 1e-4:
+                    voice_stripped_audio = voice_result.residual[0].unsqueeze(0).cpu()
+                    logging.info(
+                        f"SAM Audio stage 1: narrator voice removed using term "
+                        f"'{voice_term}' (voice RMS {voice_rms:.6f})"
+                    )
+                    break
+                else:
+                    logging.info(
+                        f"  Stage 1 '{voice_term}' found near-silence — trying next term"
+                    )
+
+            if voice_stripped_audio is None:
+                logging.info(
+                    "SAM Audio stage 1: no voice detected, proceeding with original audio"
+                )
+                waveform, sample_rate = torchaudio.load(mem_path_audio)
+                if sample_rate != sam_audio_processor.audio_sampling_rate:
+                    waveform = torchaudio.functional.resample(
+                        waveform, sample_rate, sam_audio_processor.audio_sampling_rate
+                    )
+                voice_stripped_audio = waveform.mean(dim=0, keepdim=True)
+
+            mem_path_audio_stripped = f"/dev/shm/{uuid.uuid4().hex}_stripped.wav"
+            try:
+                torchaudio.save(
+                    mem_path_audio_stripped,
+                    voice_stripped_audio,
+                    sam_audio_processor.audio_sampling_rate,
+                )
+
+                # ---- Stage 2: isolate the reported target sound -------- #
+                audio_matched_term = None
+                audio_result = None
+
+                for term in search_terms:
+                    logging.info(f"SAM Audio stage 2: trying term '{term}'")
+                    inputs = sam_audio_processor(
+                        audios=[mem_path_audio_stripped], descriptions=[term]
+                    ).to(sam_audio_device)
+
+                    with torch.inference_mode():
+                        reranking_candidates = 8 if any_objects_detected else 0
+                        result = sam_audio_model.separate(
+                            inputs,
+                            predict_spans=True,
+                            **(
+                                {"reranking_candidates": reranking_candidates}
+                                if reranking_candidates
+                                else {}
+                            ),
+                        )
+
+                    target_rms = result.target[0].cpu().pow(2).mean().sqrt().item()
+                    logging.info(f"  Stage 2 '{term}': target RMS = {target_rms:.6f}")
+
+                    if target_rms > 1e-4:
+                        audio_matched_term = term
+                        audio_result = result
+                        logging.info(
+                            f"SAM Audio stage 2: matched term '{term}' "
+                            f"(RMS {target_rms:.6f})"
+                        )
+                        break
+                    else:
+                        logging.info(
+                            f"  Stage 2 '{term}' produced near-silent target, trying next"
+                        )
+
+                if audio_result is not None:
+                    video_dir_audio = os.path.dirname(video_path)
+                    safe_desc_audio = "".join(
+                        c if c.isalnum() or c in "_-" else "_"
+                        for c in (audio_matched_term or description_short)
+                    )
+                    audio_target_path = os.path.join(
+                        video_dir_audio, f"_audio_target_{safe_desc_audio}.wav"
+                    )
+                    audio_residual_path = os.path.join(
+                        video_dir_audio, f"_audio_residual_{safe_desc_audio}.wav"
+                    )
+                    torchaudio.save(
+                        audio_target_path,
+                        audio_result.target[0].unsqueeze(0).cpu(),
+                        sam_audio_processor.audio_sampling_rate,
+                    )
+                    torchaudio.save(
+                        audio_residual_path,
+                        audio_result.residual[0].unsqueeze(0).cpu(),
+                        sam_audio_processor.audio_sampling_rate,
+                    )
+                    logging.info(
+                        f"SAM Audio stage 2: saved target -> {audio_target_path}, "
+                        f"residual -> {audio_residual_path}"
+                    )
+                else:
+                    logging.warning(
+                        f"SAM Audio stage 2: no term produced a detectable target "
+                        f"for {report_id}"
+                    )
+
+            finally:
+                if mem_path_audio_stripped and os.path.exists(mem_path_audio_stripped):
+                    os.unlink(mem_path_audio_stripped)
+                    mem_path_audio_stripped = None
+
+            del sam_audio_model
+            torch.cuda.empty_cache()
+
+        else:
+            logging.info("No audio stream — SAM Audio step skipped")
+
+        # ------------------------------------------------------------------ #
+        # Top-frame selection + MoGe depth                                   #
+        # ------------------------------------------------------------------ #
+        def overlay_masks_with_box(frame, masks, alpha=0.2):
+            colors = [(0, 255, 0), (255, 0, 0), (0, 0, 255)]
+            vis = frame.copy()
+
+            if len(masks.shape) == 2:
+                masks = masks[None, :, :]
+
+            for i, mask in enumerate(masks):
+                color = colors[i % len(colors)]
+                overlay = vis.copy()
+                overlay[mask > 0] = color
+                vis = cv2.addWeighted(overlay, alpha, vis, 1 - alpha, 0)
+
+                mask_uint8 = (mask > 0).astype(np.uint8) * 255
+                contours, _ = cv2.findContours(
+                    mask_uint8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+                )
+
+                if contours:
+                    largest_contour = max(contours, key=cv2.contourArea)
+                    x, y, w, h = cv2.boundingRect(largest_contour)
+                    cv2.rectangle(vis, (x, y), (x + w, y + h), color, 2)
+                    label = f"Obj {i+1}"
+                    cv2.putText(
+                        vis, label, (x, y - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2,
+                    )
+
+            return vis
+
+        top_frames = []
+        frame_idx = 0
+
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            if frame_idx in frames_output:
+                output = frames_output[frame_idx]
+                masks = output["out_binary_masks"]
+                probs = output["out_probs"]
+
+                if hasattr(masks, "cpu"):
+                    masks = masks.cpu().numpy()
+                if probs is not None and hasattr(probs, "cpu"):
+                    probs = probs.cpu().numpy()
+
+                vis_frame = overlay_masks_with_box(frame, masks)
+                mask_area = int((masks > 0).sum())
+
+                if mask_area > 0:
+                    sam3_confidence = (
+                        float(probs.max())
+                        if probs is not None and len(probs) > 0
+                        else 0.0
+                    )
+                    flat_mask = (
+                        np.any(masks > 0, axis=0) if masks.ndim == 3 else (masks > 0)
+                    )
+                    top_frames.append(
+                        (mask_area, sam3_confidence, vis_frame.copy(), frame_idx, flat_mask)
+                    )
+                    top_frames.sort(key=lambda x: x[0], reverse=True)
+                    top_frames = top_frames[:3]
+
+            frame_idx += 1
+
+        if not top_frames:
+            logging.warning(
+                f"No detections found, saving fallback frames for {report_id}"
+            )
+            for fidx in [0, total_frames // 2, total_frames - 1]:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, fidx)
+                ret, frame = cap.read()
+                if ret:
+                    top_frames.append((0, 0.0, frame.copy(), fidx, None))
+
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        local_model_path = "metricAnything/student_pointmap.pt"
+        logging.info(
+            f"Loading metricAnything model from local directory: {local_model_path}"
+        )
+        model = MoGeModel.from_pretrained(local_model_path).to(device)
+        model.eval()
+
+        video_dir = os.path.dirname(video_path)
+        safe_desc = "".join(
+            c if c.isalnum() or c in "_-" else "_"
+            for c in (matched_term or description_short)
+        )
+
+        frame_distances = {}
+
+        for rank, (mask_area, sam3_confidence, annotated, fidx, flat_mask) in enumerate(
+            top_frames, 1
+        ):
+            path = os.path.join(
+                video_dir, f"_top{rank}_{safe_desc}_frame_{fidx:04d}.jpg"
+            )
+            cv2.imwrite(path, annotated)
+            logging.info(f"Top {rank}: frame {fidx} (mask_area: {mask_area}px) -> {path}")
+
+            frame_rgb = cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB)
+            input_tensor = torch.tensor(
+                frame_rgb / 255.0, dtype=torch.float32, device=device
+            ).permute(2, 0, 1)
+
+            with torch.no_grad():
+                output = model.infer(input_tensor)
+
+            depth = output["depth"].cpu().numpy()
+
+            median_dist = None
+            min_dist = None
+            location_segmented = None
+
+            if flat_mask is not None:
+                object_depths = depth[flat_mask]
+                if len(object_depths) > 0:
+                    median_dist = float(np.median(object_depths))
+                    min_dist = float(np.min(object_depths))
+                    logging.info(
+                        f"Target object in frame {fidx} is at median distance "
+                        f"{median_dist:.2f}m, minimum distance {min_dist:.2f}m"
+                    )
+                else:
+                    logging.info(
+                        f"Target object in frame {fidx} failed to yield valid depth data"
+                    )
+
+            if flat_mask is not None and median_dist is not None:
+                location_point = to_shape(report.location_upload)
+                geod = Geod(ellps="WGS84")
+                lon, lat, _ = geod.fwd(
+                    lons=location_point.x,
+                    lats=location_point.y,
+                    az=orientation_device,
+                    dist=median_dist,
+                )
+                location_segmented = f"POINT({lon} {lat})"
+                logging.info(f"location_segmented: {location_segmented}")
+
+            frame_distances[fidx] = {
+                "median": median_dist,
+                "min": min_dist,
+                "location_segmented": location_segmented,
+            }
+
+            depth_min, depth_max = 0, 50
+            depth_clip = np.clip(depth, depth_min, depth_max)
+            depth_norm = (depth_clip - depth_min) / (depth_max - depth_min)
+            depth_colormap = cv2.applyColorMap(
+                (depth_norm * 255).astype(np.uint8), cv2.COLORMAP_MAGMA
+            )
+            depth_path = os.path.join(
+                video_dir, f"_top{rank}_{safe_desc}_frame_{fidx:04d}_depth.png"
+            )
+            cv2.imwrite(depth_path, depth_colormap)
+            logging.info(f"Depth map saved -> {depth_path}")
+
+        # ------------------------------------------------------------------ #
+        # Persist to DB                                                       #
+        # ------------------------------------------------------------------ #
+        db = get_sync_db()
+        try:
+            report = db.get(Report, report_id)
+
+            for rank, (mask_area, sam3_confidence, annotated, fidx, flat_mask) in enumerate(
+                top_frames, 1
+            ):
+                height, width = annotated.shape[:2]
+                total_pixels = height * width
+                mask_coverage = (
+                    float(mask_area / total_pixels) if total_pixels > 0 else 0.0
+                )
+
+                dist_data = frame_distances.get(
+                    fidx, {"median": None, "min": None, "location_segmented": None}
+                )
+
+                new_frame = ReportedFrame(
+                    report_id=report_id,
+                    image_path=os.path.join(
+                        video_dir, f"_top{rank}_{safe_desc}_frame_{fidx:04d}.jpg"
+                    ),
+                    confidence=sam3_confidence,
+                    mask_coverage=mask_coverage,
+                    distance_median_from_reported_location=dist_data["median"],
+                    distance_min_from_reported_location=dist_data["min"],
+                    location_segmented=dist_data["location_segmented"],
+                    audio_target_path=audio_target_path,
+                    audio_residual_path=audio_residual_path,
+                )
+                report.frames.append(new_frame)
+
+            report.status = (
+                "segmented" if any_objects_detected else "segmented_no_detection"
+            )
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            raise e
+        finally:
+            db.close()
+
+        logging.info(f"Done! Output dir: {video_dir}")
+
+    except Exception as e:
+        db = get_sync_db()
+        try:
+            report = db.get(Report, report_id)
+            report.status = "Failed during segmentation"
+            db.commit()
+        finally:
+            db.close()
+        logging.error(f"Segmentation failed for {report_id}: {e}")
+        raise
+
+    finally:
+        if "video_predictor" in locals() and "session_id" in locals():
+            try:
+                video_predictor.handle_request(
+                    dict(type="close_session", session_id=session_id)
+                )
+            except Exception:
+                pass
+
+        if "video_predictor" in locals():
+            try:
+                del video_predictor
+            except Exception:
+                pass
+
+        if "cap" in locals() and cap.isOpened():
+            cap.release()
+
+        for tmp_path in [mem_path_audio, mem_path_audio_stripped]:
+            if tmp_path and os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+
+        try:
+            crypto.shred(aes_key)
+        except NameError:
+            pass
+        try:
+            crypto.shred(encrypted_blob)
+        except NameError:
+            pass
+
+        if plaintext is not None:
+            try:
+                crypto.shred(plaintext)
+            except NameError:
+                pass
+
+        if os.path.exists(mem_path):
+            os.unlink(mem_path)
+
+        torch.cuda.synchronize()
+        torch.cuda.empty_cache()
+        gc.collect()
+
+    logging.info(f"Finished segment for {report_id}")

@@ -1,0 +1,335 @@
+
+========================================================================
+  OUTCOME COUNTS: ALL RECORDS
+========================================================================
+scope       outcome    type  count
+  ALL     success_a success    124
+  ALL     failure_b failure      2
+  ALL     failure_c failure     28
+  ALL     failure_d failure     10
+  ALL     failure_e failure     36
+  ALL TOTAL_SUCCESS summary    124
+  ALL TOTAL_FAILURE summary     76
+  ALL  UNCLASSIFIED summary      0
+  ALL TOTAL_RECORDS summary    200
+
+========================================================================
+  OUTCOME COUNTS: PER CATEGORY
+========================================================================
+              scope       outcome    type  count
+             Abfall     success_a success     20
+             Abfall     failure_b failure      0
+             Abfall     failure_c failure      1
+             Abfall     failure_d failure      1
+             Abfall     failure_e failure      3
+             Abfall TOTAL_SUCCESS summary     20
+             Abfall TOTAL_FAILURE summary      5
+             Abfall  UNCLASSIFIED summary      0
+             Abfall TOTAL_RECORDS summary     25
+           Diverses     success_a success     15
+           Diverses     failure_b failure      1
+           Diverses     failure_c failure      2
+           Diverses     failure_d failure      1
+           Diverses     failure_e failure      6
+           Diverses TOTAL_SUCCESS summary     15
+           Diverses TOTAL_FAILURE summary     10
+           Diverses  UNCLASSIFIED summary      0
+           Diverses TOTAL_RECORDS summary     25
+    Graffiti / Tags     success_a success     12
+    Graffiti / Tags     failure_b failure      0
+    Graffiti / Tags     failure_c failure      7
+    Graffiti / Tags     failure_d failure      2
+    Graffiti / Tags     failure_e failure      4
+    Graffiti / Tags TOTAL_SUCCESS summary     12
+    Graffiti / Tags TOTAL_FAILURE summary     13
+    Graffiti / Tags  UNCLASSIFIED summary      0
+    Graffiti / Tags TOTAL_RECORDS summary     25
+        Grünflächen     success_a success     15
+        Grünflächen     failure_b failure      1
+        Grünflächen     failure_c failure      2
+        Grünflächen     failure_d failure      0
+        Grünflächen     failure_e failure      7
+        Grünflächen TOTAL_SUCCESS summary     15
+        Grünflächen TOTAL_FAILURE summary     10
+        Grünflächen  UNCLASSIFIED summary      0
+        Grünflächen TOTAL_RECORDS summary     25
+  Lichtsignalanlage     success_a success     13
+  Lichtsignalanlage     failure_b failure      0
+  Lichtsignalanlage     failure_c failure      1
+  Lichtsignalanlage     failure_d failure      2
+  Lichtsignalanlage     failure_e failure      9
+  Lichtsignalanlage TOTAL_SUCCESS summary     13
+  Lichtsignalanlage TOTAL_FAILURE summary     12
+  Lichtsignalanlage  UNCLASSIFIED summary      0
+  Lichtsignalanlage TOTAL_RECORDS summary     25
+      Signalisation     success_a success     19
+      Signalisation     failure_b failure      0
+      Signalisation     failure_c failure      1
+      Signalisation     failure_d failure      1
+      Signalisation     failure_e failure      4
+      Signalisation TOTAL_SUCCESS summary     19
+      Signalisation TOTAL_FAILURE summary      6
+      Signalisation  UNCLASSIFIED summary      0
+      Signalisation TOTAL_RECORDS summary     25
+Strassenbeleuchtung     success_a success     12
+Strassenbeleuchtung     failure_b failure      0
+Strassenbeleuchtung     failure_c failure     10
+Strassenbeleuchtung     failure_d failure      3
+Strassenbeleuchtung     failure_e failure      0
+Strassenbeleuchtung TOTAL_SUCCESS summary     12
+Strassenbeleuchtung TOTAL_FAILURE summary     13
+Strassenbeleuchtung  UNCLASSIFIED summary      0
+Strassenbeleuchtung TOTAL_RECORDS summary     25
+    Strassenschäden     success_a success     18
+    Strassenschäden     failure_b failure      0
+    Strassenschäden     failure_c failure      4
+    Strassenschäden     failure_d failure      0
+    Strassenschäden     failure_e failure      3
+    Strassenschäden TOTAL_SUCCESS summary     18
+    Strassenschäden TOTAL_FAILURE summary      7
+    Strassenschäden  UNCLASSIFIED summary      0
+    Strassenschäden TOTAL_RECORDS summary     25
+
+========================================================================
+  COMPLETION TIME & WER SCORE STATS: ALL RECORDS
+========================================================================
+scope          metric   n    mean  median     std  min     q1    q3   max
+  ALL completion_time 200 181.285 163.000 107.401 25.0 102.00 215.5 975.0
+  ALL       WER_score 200   0.361   0.307   0.284  0.0   0.19   0.5   3.0
+
+========================================================================
+  COMPLETION TIME & WER SCORE STATS: PER CATEGORY
+========================================================================
+              scope          metric  n    mean  median     std    min      q1      q3     max
+             Abfall completion_time 25 143.560 123.000  56.566 81.000  95.000 175.000 292.000
+             Abfall       WER_score 25   0.282   0.250   0.214  0.000   0.152   0.349   0.800
+           Diverses completion_time 25 146.080 121.000  64.824 81.000  94.000 184.000 309.000
+           Diverses       WER_score 25   0.407   0.273   0.565  0.065   0.207   0.438   3.000
+    Graffiti / Tags completion_time 25 177.880 176.000  90.963 68.000 124.000 201.000 491.000
+    Graffiti / Tags       WER_score 25   0.427   0.375   0.229  0.000   0.278   0.545   1.000
+        Grünflächen completion_time 25 218.920 158.000 200.176 25.000 124.000 230.000 975.000
+        Grünflächen       WER_score 25   0.209   0.176   0.139  0.063   0.105   0.239   0.667
+  Lichtsignalanlage completion_time 25 205.000 186.000 103.140 57.000 130.000 278.000 383.000
+  Lichtsignalanlage       WER_score 25   0.325   0.263   0.195  0.040   0.167   0.500   0.714
+      Signalisation completion_time 25 220.280 214.000  82.134 90.000 175.000 242.000 490.000
+      Signalisation       WER_score 25   0.279   0.275   0.140  0.080   0.154   0.357   0.667
+Strassenbeleuchtung completion_time 25 170.680 137.000  94.271 83.000  96.000 208.000 414.000
+Strassenbeleuchtung       WER_score 25   0.570   0.500   0.203  0.222   0.500   0.667   1.200
+    Strassenschäden completion_time 25 167.880 163.000  83.018 87.000 103.000 208.000 450.000
+    Strassenschäden       WER_score 25   0.391   0.346   0.204  0.045   0.235   0.500   1.000
+
+========================================================================
+  SUCCESS / FAILURE RATES (% of total): ALL RECORDS
+========================================================================
+scope   outcome    type   n  rate_%
+  ALL success_a success 124    62.0
+  ALL failure_b failure   2     1.0
+  ALL failure_c failure  28    14.0
+  ALL failure_d failure  10     5.0
+  ALL failure_e failure  36    18.0
+
+========================================================================
+  SUCCESS / FAILURE RATES (% of total): PER CATEGORY
+========================================================================
+              scope   outcome    type  n  rate_%
+             Abfall success_a success 20    80.0
+             Abfall failure_b failure  0     0.0
+             Abfall failure_c failure  1     4.0
+             Abfall failure_d failure  1     4.0
+             Abfall failure_e failure  3    12.0
+           Diverses success_a success 15    60.0
+           Diverses failure_b failure  1     4.0
+           Diverses failure_c failure  2     8.0
+           Diverses failure_d failure  1     4.0
+           Diverses failure_e failure  6    24.0
+    Graffiti / Tags success_a success 12    48.0
+    Graffiti / Tags failure_b failure  0     0.0
+    Graffiti / Tags failure_c failure  7    28.0
+    Graffiti / Tags failure_d failure  2     8.0
+    Graffiti / Tags failure_e failure  4    16.0
+        Grünflächen success_a success 15    60.0
+        Grünflächen failure_b failure  1     4.0
+        Grünflächen failure_c failure  2     8.0
+        Grünflächen failure_d failure  0     0.0
+        Grünflächen failure_e failure  7    28.0
+  Lichtsignalanlage success_a success 13    52.0
+  Lichtsignalanlage failure_b failure  0     0.0
+  Lichtsignalanlage failure_c failure  1     4.0
+  Lichtsignalanlage failure_d failure  2     8.0
+  Lichtsignalanlage failure_e failure  9    36.0
+      Signalisation success_a success 19    76.0
+      Signalisation failure_b failure  0     0.0
+      Signalisation failure_c failure  1     4.0
+      Signalisation failure_d failure  1     4.0
+      Signalisation failure_e failure  4    16.0
+Strassenbeleuchtung success_a success 12    48.0
+Strassenbeleuchtung failure_b failure  0     0.0
+Strassenbeleuchtung failure_c failure 10    40.0
+Strassenbeleuchtung failure_d failure  3    12.0
+Strassenbeleuchtung failure_e failure  0     0.0
+    Strassenschäden success_a success 18    72.0
+    Strassenschäden failure_b failure  0     0.0
+    Strassenschäden failure_c failure  4    16.0
+    Strassenschäden failure_d failure  0     0.0
+    Strassenschäden failure_e failure  3    12.0
+
+========================================================================
+  WER QUALITY DISTRIBUTION: ALL RECORDS
+========================================================================
+scope                wer_band  count  pct
+  ALL             Perfect (0)      3  1.5
+  ALL         Good (0 to 0.2)     54 27.0
+  ALL Acceptable (0.2 to 0.4)     76 38.0
+  ALL       Poor (0.4 to 0.6)     40 20.0
+  ALL        Bad (0.6 to 0.8)     21 10.5
+  ALL   Very Bad (0.8 to 1.0)      4  2.0
+  ALL                Over 1.0      2  1.0
+
+========================================================================
+  WER QUALITY DISTRIBUTION: PER CATEGORY
+========================================================================
+              scope                wer_band  count  pct
+             Abfall             Perfect (0)      2  8.0
+             Abfall         Good (0 to 0.2)      9 36.0
+             Abfall Acceptable (0.2 to 0.4)      9 36.0
+             Abfall       Poor (0.4 to 0.6)      3 12.0
+             Abfall        Bad (0.6 to 0.8)      2  8.0
+           Diverses         Good (0 to 0.2)      6 24.0
+           Diverses Acceptable (0.2 to 0.4)     12 48.0
+           Diverses       Poor (0.4 to 0.6)      5 20.0
+           Diverses        Bad (0.6 to 0.8)      1  4.0
+           Diverses                Over 1.0      1  4.0
+    Graffiti / Tags             Perfect (0)      1  4.0
+    Graffiti / Tags         Good (0 to 0.2)      1  4.0
+    Graffiti / Tags Acceptable (0.2 to 0.4)     13 52.0
+    Graffiti / Tags       Poor (0.4 to 0.6)      4 16.0
+    Graffiti / Tags        Bad (0.6 to 0.8)      5 20.0
+    Graffiti / Tags   Very Bad (0.8 to 1.0)      1  4.0
+        Grünflächen         Good (0 to 0.2)     15 60.0
+        Grünflächen Acceptable (0.2 to 0.4)      7 28.0
+        Grünflächen       Poor (0.4 to 0.6)      2  8.0
+        Grünflächen        Bad (0.6 to 0.8)      1  4.0
+  Lichtsignalanlage         Good (0 to 0.2)      8 32.0
+  Lichtsignalanlage Acceptable (0.2 to 0.4)      8 32.0
+  Lichtsignalanlage       Poor (0.4 to 0.6)      6 24.0
+  Lichtsignalanlage        Bad (0.6 to 0.8)      3 12.0
+      Signalisation         Good (0 to 0.2)     10 40.0
+      Signalisation Acceptable (0.2 to 0.4)     12 48.0
+      Signalisation       Poor (0.4 to 0.6)      2  8.0
+      Signalisation        Bad (0.6 to 0.8)      1  4.0
+Strassenbeleuchtung Acceptable (0.2 to 0.4)      5 20.0
+Strassenbeleuchtung       Poor (0.4 to 0.6)     12 48.0
+Strassenbeleuchtung        Bad (0.6 to 0.8)      5 20.0
+Strassenbeleuchtung   Very Bad (0.8 to 1.0)      2  8.0
+Strassenbeleuchtung                Over 1.0      1  4.0
+    Strassenschäden         Good (0 to 0.2)      5 20.0
+    Strassenschäden Acceptable (0.2 to 0.4)     10 40.0
+    Strassenschäden       Poor (0.4 to 0.6)      6 24.0
+    Strassenschäden        Bad (0.6 to 0.8)      3 12.0
+    Strassenschäden   Very Bad (0.8 to 1.0)      1  4.0
+
+========================================================================
+  COMPLETION TIME DISTRIBUTION: ALL RECORDS
+========================================================================
+scope time_band  count  pct
+  ALL    <=60 s      4  2.0
+  ALL  61-120 s     60 30.0
+  ALL 121-180 s     50 25.0
+  ALL 181-300 s     65 32.5
+  ALL    >300 s     21 10.5
+
+========================================================================
+  COMPLETION TIME DISTRIBUTION: PER CATEGORY
+========================================================================
+              scope time_band  count  pct
+             Abfall  61-120 s     12 48.0
+             Abfall 121-180 s      7 28.0
+             Abfall 181-300 s      6 24.0
+           Diverses  61-120 s     12 48.0
+           Diverses 121-180 s      5 20.0
+           Diverses 181-300 s      7 28.0
+           Diverses    >300 s      1  4.0
+    Graffiti / Tags  61-120 s      5 20.0
+    Graffiti / Tags 121-180 s      8 32.0
+    Graffiti / Tags 181-300 s     10 40.0
+    Graffiti / Tags    >300 s      2  8.0
+        Grünflächen    <=60 s      3 12.0
+        Grünflächen  61-120 s      3 12.0
+        Grünflächen 121-180 s      9 36.0
+        Grünflächen 181-300 s      5 20.0
+        Grünflächen    >300 s      5 20.0
+  Lichtsignalanlage    <=60 s      1  4.0
+  Lichtsignalanlage  61-120 s      5 20.0
+  Lichtsignalanlage 121-180 s      6 24.0
+  Lichtsignalanlage 181-300 s      7 28.0
+  Lichtsignalanlage    >300 s      6 24.0
+      Signalisation  61-120 s      3 12.0
+      Signalisation 121-180 s      4 16.0
+      Signalisation 181-300 s     16 64.0
+      Signalisation    >300 s      2  8.0
+Strassenbeleuchtung  61-120 s     10 40.0
+Strassenbeleuchtung 121-180 s      5 20.0
+Strassenbeleuchtung 181-300 s      7 28.0
+Strassenbeleuchtung    >300 s      3 12.0
+    Strassenschäden  61-120 s     10 40.0
+    Strassenschäden 121-180 s      6 24.0
+    Strassenschäden 181-300 s      7 28.0
+    Strassenschäden    >300 s      2  8.0
+
+========================================================================
+  ADDITIONAL METRICS
+========================================================================
+
+  Correlation: completion_time vs WER_score
+  Pearson correlation (completion_time vs WER_score): -0.1169
+  Interpretation: weak negative relationship
+
+  Mean & Median WER and time: SUCCESS vs FAILURE
+outcome_type   n  mean_WER  median_WER  mean_time  median_time
+     success 124     0.336       0.276      191.2        177.0
+     failure  76     0.403       0.360      165.1        122.5
+
+  Category ranking by mean WER_score (ascending = better)
+           category  n  mean_WER  median_WER
+        Grünflächen 25     0.209       0.176
+      Signalisation 25     0.279       0.275
+             Abfall 25     0.282       0.250
+  Lichtsignalanlage 25     0.325       0.263
+    Strassenschäden 25     0.391       0.346
+           Diverses 25     0.407       0.273
+    Graffiti / Tags 25     0.427       0.375
+Strassenbeleuchtung 25     0.570       0.500
+
+  Category ranking by success rate (descending = better)
+           category  total  successes  success_rate%
+             Abfall     25         20           80.0
+      Signalisation     25         19           76.0
+    Strassenschäden     25         18           72.0
+           Diverses     25         15           60.0
+        Grünflächen     25         15           60.0
+  Lichtsignalanlage     25         13           52.0
+    Graffiti / Tags     25         12           48.0
+Strassenbeleuchtung     25         12           48.0
+
+  Completion time outliers (beyond 1.5 x IQR fence)
+  IQR fence: [-68.2, 385.8]  outlier count: 6
+ dataset(id)            category  completion_time  WER_score
+          30         Grünflächen              627      0.147
+          47         Grünflächen              975      0.077
+          96     Graffiti / Tags              491      0.333
+         122       Signalisation              490      0.200
+         139 Strassenbeleuchtung              414      0.400
+         173     Strassenschäden              450      0.286
+
+  Average WER score per failure type
+failure_type  mean_WER
+   failure_c     0.545
+   failure_b     0.466
+   failure_d     0.414
+   failure_e     0.285
+
+========================================================================
+  Analysis complete.
+========================================================================
+
+  Generating charts -> results_charts.pdf and PNG files
