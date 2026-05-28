@@ -100,6 +100,22 @@ class TokenRequest(BaseModel):
     client_secret: str
 
 
+@app.post("/new_report/")
+async def new_report(request: Request, db: AsyncSession = Depends(get_db)):
+    claims = await app.state.auth0.require_auth()(request)
+
+    report = Report(user_id=claims["sub"])
+    db.add(report)
+    await db.flush()
+    await db.refresh(report)
+    await db.commit()
+
+    return {
+        "report_id": report.report_id,
+        "public_key": app.state.public_key,
+        "expires_at": "2026-12-12-12:00:00Z"
+    }
+
 @app.post("/upload_video/")
 async def receive_encrypted_video(
     request: Request,

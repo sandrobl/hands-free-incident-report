@@ -4,7 +4,8 @@ from datetime import datetime, timedelta
 
 from celery_app import celery_app
 from db import get_sync_db, Report
-from sqlalchemy import select
+from sqlalchemy import select, cast
+from geoalchemy2 import Geography
 from geoalchemy2.functions import ST_DWithin
 from sentence_transformers import SentenceTransformer, util
 
