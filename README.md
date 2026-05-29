@@ -83,6 +83,23 @@ The Docker setup script also references:
 - Cloudflared tunnel target (when using the compose file): `http://192.168.0.101:8000` (see [docker/docker-compose.yml](docker/docker-compose.yml)).
 - Swagger UI: FastAPI serves it at `/docs` when the default docs are enabled.
 
+## External Dependencies
+
+- FastAPI
+- Celery
+- Redis
+- PostgreSQL with PostGIS
+- Auth0 (client-credentials flow)
+- Docker / Docker Compose
+- `ffmpeg`
+- Whisper `large-v3`
+- Gemma (text model)
+- SAM3 (video segmentation)
+- MoGe (depth estimation)
+- sentence-transformers (embeddings)
+- Hugging Face Hub (model download/auth)
+- Cloudflared (optional tunnel in compose)
+
 ## Dataset and Analytics
 
 The [dataset](dataset) folder includes:
